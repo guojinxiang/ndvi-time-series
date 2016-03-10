@@ -1,0 +1,97 @@
+<html><head>
+<script src="https://www.google.com/jsapi" type="text/javascript"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script>google.load("visualization", "1",{packages:["corechart"]});</script>
+<title>NTST Chart View</title>
+</head>
+<body>
+    <script>
+        google.setOnLoadCallback(drawChart);
+        var chart;
+        var dataTable;
+
+         function drawChart() {
+            %(jscode)s
+             var options = {title:"NDVI at [%(lat)s,%(lon)s] per %(per)s (%(start)s-%(end)s)", pointSize:3,
+                 %(trendline)s
+                 hAxis:%(hAxis)s
+                 vAxis:{title:"NDVI"},
+                 chartArea: %(chartArea)s
+             };
+            chart = new google.visualization.ScatterChart(document.getElementById("chart_%(filename)s"));
+            dataTable = data;
+            chart.draw(data, options);
+        }
+    </script>
+    <p id="stats" style="margin-left:1em; margin-top:1em;">Regression: %(regression)s<br>Data source: %(source)s<br>Time range: %(start)s-%(end)s<br>Cloud score: %(cloudscore)s</p>
+    <div id="chart_%(filename)s" style="%(chart_style)s margin: 0px auto;"></div>
+    <div style="text-align: center; margin-top: 2em;">
+        <button autocomplete="off" class="toImage btn btn-primary">Get image as PNG</button>
+        <button autocomplete="off" class="toCsv btn btn-primary">Get table as CSV</button>
+    </div>
+    <script>
+    /**
+     * Convert an instance of google.visualization.DataTable to CSV
+     * @param {google.visualization.DataTable} dataTable_arg DataTable to convert
+     * @return {String} Converted CSV String
+     */
+    function dataTableToCSV(dataTable_arg) {
+        var dt_cols = dataTable_arg.getNumberOfColumns();
+        var dt_rows = dataTable_arg.getNumberOfRows();
+        
+        var csv_cols = [];
+        var csv_out;
+        
+        // Iterate columns
+        for (var i=0; i<dt_cols; i++) {
+            // Replace any commas in column labels
+            csv_cols.push(dataTable_arg.getColumnLabel(i).replace(/,/g,""));
+        }
+        
+        // Create column row of CSV
+        csv_out = csv_cols.join(",")+"\r\n";
+        
+        // Iterate rows
+        for (i=0; i<dt_rows; i++) {
+            var raw_col = [];
+            for (var j=0; j<dt_cols; j++) {
+                // Replace any commas in row values
+                raw_col.push(dataTable_arg.getFormattedValue(i, j, 'label').replace(/,/g,""));
+            }
+            // Add row to CSV text
+            csv_out += raw_col.join(",")+"\r\n";
+        }
+
+        return csv_out;
+    }
+
+    //download chart as png
+    $(".toImage").click(function(){
+        var downloadTag = document.createElement("a");
+        downloadTag.setAttribute("href", chart.getImageURI());
+        downloadTag.setAttribute("download", "%(filename)s.png");
+        document.body.appendChild(downloadTag);
+        downloadTag.click();
+        document.body.removeChild(downloadTag);
+    });
+
+    //download chart as csv
+    $(".toCsv").click(function(){
+        var csv = dataTableToCSV(dataTable);
+
+        var blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+        var url  = window.URL || window.webkitURL;
+        var downloadTag = document.createElementNS("http://www.w3.org/1999/xhtml", "a");
+
+        downloadTag.setAttribute("href", url.createObjectURL(blob));
+        downloadTag.setAttribute("download", "%(filename)s.csv");
+
+        document.body.appendChild(downloadTag);
+        downloadTag.click();
+        document.body.removeChild(downloadTag);
+    });
+    </script>
+</body></html>

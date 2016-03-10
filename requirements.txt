@@ -1,0 +1,7 @@
+google-api-python-client
+
+pyCrypto
+
+earthengine-api
+
+https://github.com/google/google-visualization-python/archive/master.zip

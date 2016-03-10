@@ -1,0 +1,14 @@
+<script>
+%(jscode)s
+
+var options = {title:"NDVI at [%(lat)s,%(lon)s] per %(per)s (%(start)s-%(end)s)", pointSize:3,
+                %(trendline)s
+                hAxis:%(hAxis)s
+                vAxis:{title:"NDVI"},
+                chartArea: %(chartArea)s
+                };
+var chart = new google.visualization.ScatterChart(document.getElementById("chart_%(filename)s"));
+chart.draw(data, options);
+</script>
+<div id="chart_%(filename)s" style="margin-bottom: 0.5em;"></div>
+<a href="/chart?id=%(chart_id)s" target="_blank">Full screen url (only temporary valid)</a>

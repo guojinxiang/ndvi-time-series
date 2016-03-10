@@ -1,0 +1,280 @@
+html,
+body,
+.ntst,
+.ntst .map {
+  height: 100%;
+  margin: 0px;
+  padding: 0px;
+  overflow: hidden;
+}
+
+body,
+input,
+textarea,
+select,
+button,
+keygen,
+isindex {
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 14px;
+}
+
+.ntst .ui {
+  position: absolute;
+  top: 10px;
+  left: 110px;
+  width: 480px;
+  z-index: 1;
+}
+
+.ntst .panel {
+  position: relative;
+  border-radius: 2px;
+  background-color: white;
+  padding: 15px;
+  box-shadow: 0px 0px 5px gray;
+  width:100%;
+  margin-bottom: 0;
+}
+
+.ntst header {
+  padding-bottom: 5px;
+}
+
+.ntst .instructions {
+  margin: 0;
+}
+
+.ntst .intro {
+  margin: 0;
+}
+
+.ntst h1 {
+  margin-top: 0;
+  margin-bottom: 0;
+  display: block;
+}
+
+.ntst .controls {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: flex-end;
+}
+
+.ntst .inputs {
+  flex-grow: 8;
+}
+
+.ntst .inputs,
+.ntst .btn.export {
+  display: inline-block;
+}
+
+.ntst .input-block {
+  display: block;
+  margin-top: 7px;
+}
+
+.ntst .input-block.region {
+  height: 22px;
+}
+
+.ntst .input-block-label {
+  font-weight: bold;
+  display: inline-block;
+  width: 105px;
+}
+
+.ntst .date-type-picker input[type=radio] {
+  vertical-align: top;
+  margin-top: 2px;
+}
+
+.ntst .date-type-picker label {
+  font-style: italic;
+  font-weight: normal;
+}
+
+.ntst .date-type-picker .or {
+  padding: 0 .3em;
+}
+
+.ntst .range-picker,
+.ntst .average-picker, {
+  display: block;
+}
+
+.ntst .filename {
+  width: 330px;
+  display: inline;
+}
+
+.ntst .start-picker,
+.ntst .end-picker {
+  display: inline-block;
+  width: 70px;
+}
+.ntst .lat-picker,
+.ntst .lon-picker {
+  display: inline-block;
+  width: 135px;
+}
+.poi-message{
+  margin-top: 2px;
+  margin-left: 108px;
+}
+
+.ntst .region .message,
+.ntst .point .message {
+  font-style: italic;
+  color: gray;
+}
+
+.ntst .region .message-drawing,
+.ntst .region .message-selected,
+.ntst .point .message-drawing,
+.ntst .point .message-selected {
+  display: none;
+}
+
+.ntst .region.selected .message,
+.ntst .region.drawing .message,
+.ntst .point.selected .message,
+.ntst .point.drawing .message {
+  display: none;
+}
+
+.ntst .region.drawing .message-drawing,
+.ntst .point.drawing .message-drawing {
+  display: inline;
+}
+
+.ntst .region.selected .message-selected,
+.ntst .point.selected .message-selected {
+  display: inline;
+  color: green;
+  font-style: normal;
+}
+
+.ntst .region.selected .message-selected .clear,
+.ntst .point.selected .message-selected .clear {
+  color: black;
+}
+
+.ntst .ntst {
+  flex-grow: 1;
+}
+
+.ntst .ntst:disabled {
+  color: gray;
+}
+
+.ntst .alerts .alert {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.ntst .alerts .alert.visible {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 2s linear;
+}
+
+.ntst .alerts .alert {
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 2s, opacity 2s linear;
+}
+
+.ntst .alerts .alert .line2 {
+  font-style: italic;
+}
+
+.ntst .alerts .multifile {
+  padding-left: 1ex;
+}
+
+.ntst .templates {
+  display: none;
+}
+
+#closeOptions {
+  position: absolute;
+  top: 0px;
+  right: 5px;
+  float: right;
+}
+#closeOptions:hover {
+  cursor: pointer;
+}
+
+#closedUi, #about {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: 110px;
+  z-index: 1;
+  border-radius: 2px;
+  background-color: white;
+  padding: 6px;
+  box-shadow: 0px 0px 5px gray;
+  overflow: auto;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+#closedUi:hover{
+  cursor: pointer;
+}
+
+#showAbout {
+  position: absolute;
+  right: 5px;
+  bottom: 0px;
+  float: right;
+}
+#showAbout:hover {
+  cursor: pointer;
+}
+#about{
+  top:50px;
+}
+#about h4{
+  margin-bottom: 0px; 
+}
+.cloudscore-picker {
+  display: inline-block;
+  width: 70px;
+}
+#bandSwitcher{
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  border-radius: 2px;
+  background-color: white;
+  padding-left: 6px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-right: 10px;
+  box-shadow: 0px 0px 5px gray;
+  overflow: auto;
+}
+.checkbox{
+  padding-left: 20px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+input[type="checkbox"]{
+  margin-left: 0px;
+}
+div.tooltip-inner{
+  max-width: none;
+}
+#instructions1{
+  margin-bottom: 0px;
+}
+#instructions2{
+  display: none;
+}

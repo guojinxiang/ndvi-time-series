@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>NDVI Time Series Tool</title>
+
+    {# Support for browsers on mobile phones. #}
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    {# Google Web Fonts. #}
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+
+    {# Third-party CSS.#}
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.4.0/css/bootstrap-datepicker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.7.5/css/bootstrap-select.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesome-bootstrap-checkbox/0.3.5/awesome-bootstrap-checkbox.min.css">
+
+    {# Third-party JavaScript. #}
+    <script src="/_ah/channel/jsapi"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=drawing"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.4.0/js/bootstrap-datepicker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.7.5/js/bootstrap-select.min.js"></script>
+    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=MML_HTMLorMML"></script>
+
+    {# The EE client library, used for ee.MapLayerOverlay. #}
+    <script src="/static/ee_api_js.js"></script>
+
+    {# Custom styles and script for our application. #}
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/client.js"></script>
+
+    {# Load the Google Visualization API #}
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+      google.load("visualization", "1.0", {packages:["corechart"]});
+    </script>
+  </head>
+  <body>
+
+    {# The DOM of our application. #}
+    <div class="ntst">
+
+      {# image band visibility changer #}
+      <div id="bandSwitcher"></div>
+
+      {# A container which the Maps API will populate with a map. #}
+      <div class="map"></div>
+
+      {# The UI wrapper for the control box and notifications. #}
+      <div id="closedUi">Show options</div>
+      <div id="about">
+        <h4>Author</h4>
+        Yannick Dylla<br>
+        University Göttingen
+        <br>
+        <h4>Source Code</h4>
+        <a href="https://github.com/ydylla/ndvi-time-series">At Github.com</a>
+        <br>
+        <h4>License</h4>
+        Copyright 2015 Yannick Dylla<br>
+        <br>
+        Licensed under the Apache License, Version 2.0 (the "License");<br>
+        you may not use this file except in compliance with the License.<br>
+        You may obtain a copy of the License at<br>
+        <br>
+            http://www.apache.org/licenses/LICENSE-2.0<br>
+        <br>
+        Unless required by applicable law or agreed to in writing, software<br>
+        distributed under the License is distributed on an "AS IS" BASIS,<br>
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<br>
+        See the License for the specific language governing permissions and<br>
+        limitations under the License.
+      </div>
+      <div class="ui">
+
+        {# The main control box. #}
+        <div class="panel">
+          <a id="closeOptions">Hide options</a>
+          <a id="showAbout">About</a>
+
+          {# The title and instructions. #}
+          <header>
+            <h1>NDVI Time Series Tool</h1>
+            <p id="instructions1">
+              This tool aggregates multiple Landsat satellite images for the given years and location and calculates the coefficients of the chosen regression for the Normalized Differenced Vegetation Index (NDVI) values at each pixel. <a id="toggleInstructions" href="javascript:;">more</a></p>
+            <p id="instructions2">
+              At first a cloud score is calculated for each pixel if it is higher than the chosen one the pixel will be masked out. Subsequently the chosen regression is computed for each pixel if there are at least 2 times as many observed NDVI values than the regression has coefficients.<br>
+              The returned image contains the coefficients as individual bands and also the Root Mean Square Error (RMSE) for the predicted NDVI values. The band order of the exported files is the same as in the band switcher at the top right.
+            </p>
+          </header>
+
+          <div class="controls">
+
+            <div class="inputs">
+
+              {# The regression type selection control. #}
+              <div class="input-block regression">
+                <div class="input-block-label">Regression <span id="regression-tooltip" data-placement="bottom" data-toggle="tooltip" title="<div style='text-align:left; font-size:13px;'>Choose the type of regression:<br>
+                                                                                                                                                  Linear:&emsp;&emsp;&nbsp;&nbsp;<math xmlns='http://www.w3.org/1998/Math/MathML' display='inline'> <mi>n</mi> <mi>d</mi> <mi>v</mi> <mi>i</mi> <mo>=</mo> <msub> <mi>a</mi> <mn>1</mn> </msub> <mi>x</mi> <mo>+</mo> <msub> <mi>a</mi> <mn>0</mn> </msub> </math><br>
+                                                                                                                                                  Quadratic:&emsp;<math xmlns='http://www.w3.org/1998/Math/MathML' display='inline'> <mi>n</mi> <mi>d</mi> <mi>v</mi> <mi>i</mi> <mo>=</mo> <msub> <mi>a</mi> <mn>2</mn> </msub> <msup> <mi>x</mi> <mn>2</mn> </msup> <mo>+</mo> <msub> <mi>a</mi> <mn>1</mn> </msub> <mi>x</mi> <mo>+</mo> <msub> <mi>a</mi> <mn>0</mn> </msub> </math><br>
+                                                                                                                                                  Cubic:&emsp;&emsp;&nbsp;&nbsp;&nbsp;<math xmlns='http://www.w3.org/1998/Math/MathML' display='inline'> <mi>n</mi> <mi>d</mi> <mi>v</mi> <mi>i</mi> <mo>=</mo> <msub> <mi>a</mi> <mn>3</mn> </msub> <msup> <mi>x</mi> <mn>3</mn> </msup> <mo>+</mo> <msub> <mi>a</mi> <mn>2</mn> </msub> <msup> <mi>x</mi> <mn>2</mn> </msup> <mo>+</mo> <msub> <mi>a</mi> <mn>1</mn> </msub> <mi>x</mi> <mo>+</mo> <msub> <mi>a</mi> <mn>0</mn> </msub> </math><br>x = the day of year<br><br>
+                                                                                                                                                  ZhuWoodcock:&emsp;&emsp;&nbsp;&nbsp;<math xmlns='http://www.w3.org/1998/Math/MathML' display='inline'> <mi>n</mi> <mi>d</mi> <mi>v</mi> <mi>i</mi> <mo>=</mo> <msub> <mi>a</mi> <mn>0</mn> </msub> <mo>+</mo> <msub> <mi>a</mi> <mn>1</mn> </msub> <mi>c</mi> <mi>o</mi> <mi>s</mi> <mrow> <mo>(</mo> <mfrac> <mrow> <mn>2</mn> <mi>&#x03C0;<!-- π --></mi> </mrow> <mn>31536000</mn> </mfrac> <mi>x</mi> <mo>)</mo> </mrow> <mo>+</mo> <msub> <mi>a</mi> <mn>2</mn> </msub> <mi>s</mi> <mi>i</mi> <mi>n</mi> <mrow> <mo>(</mo> <mfrac> <mrow> <mn>2</mn> <mi>&#x03C0;<!-- π --></mi> </mrow> <mn>31536000</mn> </mfrac> <mi>x</mi> <mo>)</mo> </mrow> <mo>+</mo> <msub> <mi>a</mi> <mn>3</mn> </msub> <mi>x</mi> </math><br>x = offset in seconds from 1st January [start year] 00:00:00 in epoch seconds<script type='text/javascript'>if(/chrom(e|ium)/.test(navigator.userAgent.toLowerCase())){MathJax.Hub.Queue(['Typeset',MathJax.Hub]);}</script></div>">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                <select autocomplete="off" class="regression-picker form-control">
+                  <option value="poly1">Linear (degree 1)</option>
+                  <option value="poly2">Quadratic (degree 2)</option>
+                  <option value="poly3">Cubic (degree 3)</option>
+                  <option value="zhuWood">Function after Zhu & Woodcock</option>
+                </select>
+              </div>
+
+              {# The data source selection control. #}
+              <div class="input-block source">
+                <div class="input-block-label">Data source <span id="source-tooltip" data-toggle="tooltip" title="Choose the source satellite or select all to get images from all three.">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                <select autocomplete="off" class="source-picker form-control">
+                  <option value="all">All</option>
+                  <option value="land5">Landsat 5</option>
+                  <option value="land7">Landsat 7</option>
+                  <option value="land8">Landsat 8</option>
+                </select>
+              </div>
+
+              {# The time range selection control. #}
+              <div class="input-block time">
+                <div class="input-block-label">Time range <span id="time-tooltip" data-toggle="tooltip" title="Choose the start and end year to filter the satellite images.<br>Start and end year are included.">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                  <input autocomplete="off" class="start-picker form-control">
+                  <span>-</span>
+                  <input autocomplete="off" class="end-picker form-control">
+              </div>
+
+              {# The max cloudscore selection control. #}
+              <div class="input-block cloudscore">
+                <div class="input-block-label">Cloud score <span id="cloudscore-tooltip" data-toggle="tooltip" title="Choose the maximal cloud score value for each pixel.<br>Pixels with a greater cloud score than the chosen one are masked out.<br>A higher value means that the pixel is more likely to be a cloud.">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                  <input type="number" autocomplete="off" class="cloudscore-picker form-control" maxlength="3" min="1" max="100" value="30">
+              </div>
+
+              {# The poi selection control. #}
+              <div class="input-block point">
+                <div class="input-block-label">Point <span id="point-tooltip" data-toggle="tooltip" title="Set a point of interest to plot a chart of the NDVI values at this point.">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                <span>Lat:</span>
+                <input autocomplete="off" class="lat-picker form-control">
+                <span>Lon:</span>
+                <input autocomplete="off" class="lon-picker form-control">
+                <br>
+                <div class="poi-message">
+                  <span class="message">
+                    <a class="draw" href="#">Set a point of interest</a>
+                  </span>
+                  <span class="message-drawing">
+                    Set a marker...
+                    <button class="cancel btn btn-default btn-xs">Cancel</button>
+                  </span>
+                  <span class="message-selected">
+                    <span id="message-selected-text">Selected</span>
+                    <button class="clear btn btn-default btn-xs">Clear</button>
+                  </span>
+                </div>
+              </div>
+
+              {# The region selection control. #}
+              <div class="input-block region">
+                <div class="input-block-label">Region <span id="region-tooltip" data-toggle="tooltip" title="Select the region you want to export as .tif image.<br>All download links are valid for 5 hours.<br>Please click on the deletion link if you have finished your download.">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                <span class="message">
+                  <a class="draw" href="#">Draw on the map</a>
+                </span>
+                <span class="message-drawing">
+                  Draw a polygon...
+                  <button class="cancel btn btn-default btn-xs">Cancel</button>
+                </span>
+                <span class="message-selected">
+                  Selected
+                  <button class="clear btn btn-default btn-xs">Clear</button>
+                </span>
+              </div>
+
+              {# The exported filename control. #}
+              <div class="input-block filename">
+                <div class="input-block-label">Filename <span id="filename-tooltip" data-toggle="tooltip" title="Change the filename of the exported image or chart.">
+                                <span class="glyphicon glyphicon-question-sign"></span>
+                              </span> :
+                </div>
+                <input autocomplete="off" type="text" name="filename" class="filename form-control">
+              </div>
+
+              {# Buttons section. #}
+              <div class="input-block buttons">
+                <span id="compute-tooltip" data-toggle="tooltip" title="Please set a point or region first.">
+                  <button autocomplete="off" class="compute btn btn-primary" disabled>Compute</button>
+                </span>
+                <span id="chart-tooltip" data-toggle="tooltip" title="Please set a point first.">
+                  <button autocomplete="off" class="chart btn btn-primary" disabled>Get Chart</button>
+                </span>
+                <span id="export-tooltip" data-toggle="tooltip" title="Please set a region first.">
+                  <button autocomplete="off" class="export btn btn-primary" disabled>Export</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# The list of notifications. #}
+        <div class="alerts"></div>
+      </div>
+    </div>
+
+    <div class="templates">
+      <div class="alert alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    </div>
+
+    {# Boot our JavaScript once the body has loaded. #}
+    <script>
+      ntst.boot("{{ channelToken }}", "{{ clientId }}");
+    </script>
+
+  </body>
+</html>

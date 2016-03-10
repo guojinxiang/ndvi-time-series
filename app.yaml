@@ -1,0 +1,43 @@
+application: dummy
+version: 1
+
+runtime: python27
+api_version: 1
+threadsafe: false
+
+# to detect if a client closes a channel
+inbound_services:
+- channel_presence
+
+libraries:
+- name: jinja2
+  version: latest
+- name: webapp2
+  version: latest
+- name: pycrypto
+  version: latest
+- name: ssl
+  version: latest
+
+handlers:
+- url: /static/
+  static_dir: static
+  secure: always
+- url: /chartrunner
+  script: server.app
+  secure: always
+  login: admin
+- url: /exportrunner
+  script: server.app
+  secure: always
+  login: admin
+- url: /cron/clean
+  script: server.app
+  secure: always
+  login: admin
+- url: /clean
+  script: server.app
+  secure: always
+- url: /.*
+  script: server.app
+  secure: always

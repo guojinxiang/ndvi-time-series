@@ -1,0 +1,4 @@
+cron:
+- description: daily google drive cleaner
+  url: /cron/clean
+  schedule: every 1 hours
