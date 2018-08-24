@@ -8,12 +8,11 @@ ntst = {};  // Our namespace (NDVI Time Series Tool)
 
 /**
  * Starts the application. The main entry point for the app.
- * @param {string} channelToken The token used for Channel API communication
- *     with the App Engine backend.
- * @param {string} clientId The ID of this client for the Channel API.
+ * @param {string} clientId The ID of this client for Firebase communication.
+ * @param {string} firebaseToken The Token of this client for Firebase communication.
  */
-ntst.boot = function(channelToken, clientId) {
-  var app = new ntst.App(channelToken, clientId);
+ntst.boot = function(clientId, firebaseToken) {
+  var app = new ntst.App(clientId, firebaseToken);
 };
 
 
@@ -24,12 +23,11 @@ ntst.boot = function(channelToken, clientId) {
 /**
  * The main application.
  * This constructor renders the UI and sets up event handling.
- * @param {string} channelToken The token used for Channel API communication
- *     with the App Engine backend.
- * @param {string} clientId The ID of this client for the Channel API.
+ * @param {string} clientId The ID of this client for Firebase communication.
+ * @param {string} firebaseToken The Token of this client for Firebase communication.
  * @constructor
  */
-ntst.App = function(channelToken, clientId) {
+ntst.App = function(clientId, firebaseToken) {
   // The Google Map.
   this.map = ntst.App.createMap($(".map").get(0));
 
@@ -50,11 +48,9 @@ ntst.App = function(channelToken, clientId) {
   // to switch between them.
   this.layerBands = {};
 
-  // The ID of this client for socket communication with App Engine.
+  // The ID & firebaseToken of this client for firebase communication with App Engine.
   this.clientId = clientId;
-
-  // The channel used for communication with our App Engine backend.
-  this.channel = new goog.appengine.Channel(channelToken);
+  this.firebaseToken = firebaseToken;
 
   // Initialize the UI components.
   this.initOptions();
@@ -539,13 +535,23 @@ ntst.App.prototype.handleNewPolygon = function(opt_overlay) {
 * Initializes alert functionality.
 */
 ntst.App.prototype.initAlerts = function() {
+    // sign into Firebase with the token passed from the server
+    firebase.auth().signInWithCustomToken(this.firebaseToken).catch(function(error) {
+      console.log("Login Failed!", error.code);
+      console.log("Error message: ", error.message);
+      ntst.App.prototype.setAlert("firebase","danger","Firebase Login Failed! (" + error.code + ")",error.message);
+    });
 
-  var socket = this.channel.open();
+    // setup a database reference at path /channels/clientId
+    channel = firebase.database().ref("channels/" + this.clientId);
 
-  socket.onmessage = (function(message){
-    var data = JSON.parse(message.data);
-    this.setAlert(data.id,data.style,data.line1,data.line2);
-  }).bind(this);
+    // add a listener to the path that fires any time the value of the data changes
+    channel.on("value", function(data) {
+      var data = data.val();
+      if (data) {
+        ntst.App.prototype.setAlert(data.id,data.style,data.line1,data.line2);
+      }
+    });
 };
 
 /**
@@ -817,8 +823,12 @@ ntst.App.createMap = function(el) {
   var mapOptions = {
     center: ntst.App.DEFAULT_CENTER,
     zoom: ntst.App.DEFAULT_ZOOM,
+    mapTypeControlOptions: {
+      position: google.maps.ControlPosition.LEFT_BOTTOM
+    },
     streetViewControl: false,
-    scaleControl: true
+    scaleControl: true,
+    gestureHandling: "greedy"
   };
   var mapEl = $(".map").get(0);
   var map = new google.maps.Map(el, mapOptions);

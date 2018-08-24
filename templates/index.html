@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesome-bootstrap-checkbox/0.3.5/awesome-bootstrap-checkbox.min.css">
 
     {# Third-party JavaScript. #}
-    <script src="/_ah/channel/jsapi"></script>
+    {% include firebaseConfig %}
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=drawing"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
@@ -234,7 +234,7 @@
 
     {# Boot our JavaScript once the body has loaded. #}
     <script>
-      ntst.boot("{{ channelToken }}", "{{ clientId }}");
+      ntst.boot("{{ clientId }}","{{ firebaseToken }}");
     </script>
 
   </body>

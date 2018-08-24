@@ -41,21 +41,29 @@ import string
 import time
 import calendar
 import urlparse
+import re
+from datetime import datetime
 
-import config
-import drive
+# ctypes PATH KeyError fix
+os.environ.setdefault("PATH", '')
+
+import httplib2
+import firebase_admin
+from firebase_admin import auth as firebase_auth
 import ee
 import jinja2
+
 from oauth2client.service_account import ServiceAccountCredentials
 import webapp2
 import gviz_api
-from datetime import datetime
 
-from google.appengine.api import channel
 from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.api import users
+
+import config
+import drive
 
 
 ###############################################################################
@@ -70,11 +78,12 @@ DEBUG = True
 URL_FETCH_TIMEOUT = 600  # 10 Minuten
 
 # Check https://developers.google.com/drive/scopes for all available scopes.
-# Compines the Drive and Earth Engine Scopes into one string
-OAUTH_SCOPE = "https://www.googleapis.com/auth/drive " + ee.OAuthInfo.SCOPE  # Note! The space after drive is important
+# Compines the Drive, Earth Engine and Firebase Scopes
+OAUTH_SCOPES = ["https://www.googleapis.com/auth/drive"] + ["https://www.googleapis.com/auth/earthengine","https://www.googleapis.com/auth/devstorage.full_control"] + ["https://www.googleapis.com/auth/userinfo.email","https://www.googleapis.com/auth/firebase.database"]
 
 # Our App Engine service account's credentials for Earth Engine and Google Drive
-CREDENTIALS = ServiceAccountCredentials.from_json_keyfile_name(config.SERVICE_ACC_JSON_KEYFILE, OAUTH_SCOPE)
+CREDENTIALS = ServiceAccountCredentials.from_json_keyfile_name(config.SERVICE_ACC_JSON_KEYFILE, OAUTH_SCOPES)
+
 
 # Initialize the EE API.
 ee.Initialize(CREDENTIALS)
@@ -148,14 +157,15 @@ class MapHandler(DataHandler):
     """A servlet to handle requests to load the main web page."""
 
     def DoGet(self):
-        """Returns the main web page with Channel API details included."""
+        """Returns the main web page with Firebase details included."""
         client_id = _GetUniqueString()
 
         template = JINJA2_ENVIRONMENT.get_template("templates/index.html")
         self.response.out.write(template.render({
                 # channel token expire in 24 hours
-                "channelToken": channel.create_channel(client_id,24*60),
                 "clientId": client_id,
+                "firebaseToken": create_custom_token(client_id),
+                "firebaseConfig": "templates/%s" % config.FIREBASE_CONFIG,
                 "display_splash": "none"
         }))
 
@@ -605,6 +615,7 @@ class CleanHandler(DataHandler):
         HTTP Parameters:
             from: the client_id that disconnected
         """
+        # TODO migrate this to firebase to delete data from no longer connected clients
         self.cancelTask(self.request.get("from"))
 
 
@@ -692,26 +703,6 @@ class CleanHandler(DataHandler):
             self.response.set_status(403)
             self.response.headers["Content-Type"] = "text/html; charset=utf-8"
             self.response.out.write("<html><body>You need to be an admin.<br><a href='%s'>Login here</a></body></html>" % users.create_login_url(dest_url=self.request.url))
-
-
-###############################################################################
-#                               Routing table.                                #
-###############################################################################
-
-# The webapp2 routing table from URL paths to web request handlers. See:
-# http://webapp-improved.appspot.com/tutorials/quickstart.html
-app = webapp2.WSGIApplication([
-        ("/download", DownloadHandler),
-        ("/chart", ChartHandler),
-        ("/chartrunner", ChartRunnerHandler),
-        ("/export", ExportHandler),
-        ("/exportrunner", ExportRunnerHandler),
-        ("/_ah/channel/disconnected/", CleanHandler),
-        ("/cron/clean", CleanHandler),
-        ("/clean", CleanHandler),
-        ("/mapid", MapIdHandler),
-        ("/", MapHandler),
-])
 
 
 ###############################################################################
@@ -1138,4 +1129,92 @@ def _SendMessage(client_id, id, style, line1, line2=None):
         params["line2"] = line2
 
     logging.info("Sent to client: " + json.dumps(params))
-    channel.send_message(client_id, json.dumps(params))
+    send_firebase_message(client_id, json.dumps(params))
+
+
+###############################################################################
+#                         Firebase helper function.                           #
+###############################################################################
+# Source: https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/appengine/standard/firebase/firetactoe/firetactoe.py
+
+def firebase_init():
+    """Init the firebase_admin lib"""
+    firebase_creds = firebase_admin.credentials.Certificate(config.SERVICE_ACC_JSON_KEYFILE)
+    # Initialize the app with a service account, granting admin privileges
+    firebase_admin.initialize_app(firebase_creds, {"databaseURL": FIREBASE_DB_URL})
+
+
+def get_firebase_db_url():
+    """Grabs the databaseURL from the Firebase config snippet. Regex looks
+    scary, but all it is doing is pulling the 'databaseURL' field from the
+    Firebase javascript snippet"""
+    regex = re.compile(r'\bdatabaseURL\b.*?["\']([^"\']+)')
+    cwd = os.path.dirname(__file__)
+    try:
+        with open(os.path.join(cwd, 'templates', config.FIREBASE_CONFIG)) as f:
+            url = next(regex.search(line) for line in f if regex.search(line))
+    except StopIteration:
+        raise ValueError(
+            'Error parsing databaseURL. Please copy Firebase web snippet '
+            'into templates/{}'.format(config.FIREBASE_CONFIG))
+    return url.group(1)
+
+
+# Need to use own Http object because free app engine does not allow use of requests lib which is used by firebase_admin
+def get_firebase_http():
+    """Provides an authed http object."""
+    http = httplib2.Http()
+    CREDENTIALS.authorize(http)
+    return http
+
+
+def send_firebase_message(uid, message=None):
+    """Updates data in firebase. If a message is provided, then it updates
+     the data at /channels/<channel_id> with the message using the PATCH
+     http method. If no message is provided, then the data at this location
+     is deleted using the DELETE http method
+     """
+    url = '{}/channels/{}.json'.format(FIREBASE_DB_URL, uid)
+
+    if message:
+        return FIREBASE_HTTP.request(url, 'PATCH', body=message)
+    else:
+        return FIREBASE_HTTP.request(url, 'DELETE')
+
+
+# This function can only be used in a paid App Engine (because it requiers the requests lib)
+# def send_firebase_message(uid, message=None):
+#     channel = firebase_db.reference("channels/%s" % uid)
+
+#     if message:
+#         channel.set(message)
+#     else:
+#         channel.delete()
+
+
+# luckily firebase_admin.auth does not need requests so we can use the in house funcion to create tokens
+def create_custom_token(uid):
+    return firebase_auth.create_custom_token(uid)
+
+
+###############################################################################
+#                           App setup/Routing table.                          #
+###############################################################################
+# firebase setup
+FIREBASE_HTTP = get_firebase_http()
+FIREBASE_DB_URL = get_firebase_db_url()
+firebase_init()  # this initializes firebase_admin which is only used for token generation (because of requests limitation in free app engine)
+
+# The webapp2 routing table from URL paths to web request handlers. See:
+# http://webapp-improved.appspot.com/tutorials/quickstart.html
+app = webapp2.WSGIApplication([
+        ("/download", DownloadHandler),
+        ("/chart", ChartHandler),
+        ("/chartrunner", ChartRunnerHandler),
+        ("/export", ExportHandler),
+        ("/exportrunner", ExportRunnerHandler),
+        ("/cron/clean", CleanHandler),
+        ("/clean", CleanHandler),
+        ("/mapid", MapIdHandler),
+        ("/", MapHandler),
+])

@@ -2,6 +2,9 @@ google-api-python-client
 
 pyCrypto
 
+oauth2client
 earthengine-api
 
 https://github.com/google/google-visualization-python/archive/master.zip
+
+firebase_admin

@@ -22,7 +22,7 @@ isindex {
 .ntst .ui {
   position: absolute;
   top: 10px;
-  left: 110px;
+  left: 10px;
   width: 480px;
   z-index: 1;
 }
