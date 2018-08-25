@@ -1,3 +1,6 @@
+## Live Version
+https://ndvi-time-series.appspot.com
+
 ## Install Instructions
 - Download the Google Cloud SDK for Python
    * https://cloud.google.com/sdk/
@@ -9,7 +12,7 @@
    * https://console.firebase.google.com/
 - Download the Firebase Web Config Html file into the templates folder
    * And allow public reads in your firebase database rules
-- Update the credentials and your application id
+- Update the credentials and the config.py
    * Copy the private key json file into the root folder of the downloaded source code.
    * Update SERVICE_ACC_JSON_KEYFILE in `/config.py`.
    * Update FIREBASE_CONFIG in `/config.py`.
